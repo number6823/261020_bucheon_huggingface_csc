@@ -76,7 +76,13 @@ def find_differences(img1, img2, sensitivity, min_area):
         x, y, w, h = cv2.boundingRect(c)
         draw_circle(out, (x, y, x + w, y + h))
         count += 1
-    heat = cv2.cvtColor(cv2.applyColorMap((norm(score) * 255).astype(np.uint8), cv2.COLORMAP_JET), cv2.COLOR_BGR2RGB)
+    # 히트맵: 차이가 아닌 곳은 어둡게, 차이 난 곳만 원본 위에 빨강~노랑으로 겹쳐 표시
+    strength = np.clip((score - (1 - sensitivity)) / (sensitivity + 1e-8), 0, 1)
+    strength = cv2.GaussianBlur(strength, (0, 0), 4)
+    strength = np.clip(strength * 3, 0, 1)[..., None]
+    hot = cv2.cvtColor(cv2.applyColorMap((strength[..., 0] * 170).astype(np.uint8), cv2.COLORMAP_HOT), cv2.COLOR_BGR2RGB)
+    alpha = strength * 0.65
+    heat = (np.array(nb, np.float32) * (1 - strength) * 0.45 + nb * alpha * 0.35 + hot * alpha).clip(0, 255).astype(np.uint8)
     return out, heat, f"찾은 차이: {count}곳"
 
 
